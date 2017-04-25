@@ -1,0 +1,254 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>Chat room</title>
+    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" type="text/css" href="tooltipster.bundle.min.css" />
+</head>
+
+<body id="body">
+    <img src="/stream">
+    <div id="message_block">
+        <section id="message_header">
+            <h2>聊天室 chat room</h2>
+        </section>
+        <section id="message_history">
+            <div id="messages"></div>
+        </section>
+        <section id="message_type">
+            <form id="textbox">
+                <input id="m" autocomplete="off"/>
+                <button>Send</button>
+            </form>
+        </section>
+    </div>
+    <div id="onlinelist">
+        <h2 id="members">在線名單</h2>
+        <ul id="userlist"></ul>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <script type="text/javascript" src="tooltipster.bundle.min.js"></script>
+    <script>
+        $(function() { //for client
+            var socket = io();
+            var name;
+            const pri_chatlist = [];
+            login();
+
+            $('#textbox').submit(function() {
+                if ($('#m').val() != '') {
+                    socket.emit('chat message', $('#m').val()); //display message
+                    $('#m').val(''); // clean input
+                }
+                return false;
+            });
+
+            /*$('#form').submit(function() {
+              if ($('#input').val() != '') {
+                  socket.emit('private chat message', {
+                    to: user2,
+                    msg: $('#input').val()
+                  });
+                  $('#input').val('');
+              }
+              return false;
+            });*/
+
+            socket.on('relogin', function() {
+                alert("此帳號已從別處登入，請用其他帳號重新登入！");
+                login();
+            });
+
+            socket.on('wrong password', function() {
+                alert("密碼錯誤，請重新登入！");
+                login();
+            });
+
+            socket.on('chat message', function(data) {
+                AppendMessage(data);
+            });
+
+            socket.on('onetoone chat', function(user2) {
+                console.log("private_chat!!!");
+                var body = document.getElementById("body");
+                var newdiv = document.createElement("div");
+                var header = document.createElement("h3");
+                var content = document.createElement("section");
+                var message = document.createElement("div");
+                var newsec = document.createElement("section");
+                var form = document.createElement("form");
+                var input = document.createElement("input");
+                var button = document.createElement("button");
+                newdiv.className = "private_chat";
+                message.id = user2;
+                header.className = "private_header";
+                if(user2==name){
+                  header.innerHTML =  user2+"(Yourself)";
+                }
+                else {
+                  header.innerHTML =  user2;
+                }
+                content.className = "private_content";
+                form.className = "private_form";
+                input.className = "private_input";
+                button.className = "private_button";
+                button.innerHTML = "Send";
+                form.id = "form"+user2;
+                input.id = "input"+user2;
+                content.id = "content"+user2;
+                form.appendChild(input);
+                form.appendChild(button);
+                form.addEventListener('submit',function(e){
+                  if ($('#'+"input"+user2).val() != '') {
+                      socket.emit('private chat message', {
+                        to: user2,
+                        msg: $('#'+"input"+user2).val()
+                      });
+                      $('#'+"input"+user2).val('');
+                  }
+                  e.preventDefault();
+                });
+                newsec.appendChild(form);
+                content.appendChild(message);
+                newdiv.appendChild(header);
+                newdiv.appendChild(content);
+                newdiv.appendChild(newsec);
+                body.appendChild(newdiv);
+                pri_chatlist.push(user2);
+            });
+
+            socket.on('private send', function(data) {
+                AppendPriMessage(data);
+            });
+
+            socket.on('add record', function(data) {
+                AppendMessage(data);
+            });
+
+            socket.on('set guestnum', function(num) {
+                if (num != 1)
+                    name += num;
+            });
+
+            socket.on('update userlist', function(userlist) {
+                updateuserlist(userlist);
+            });
+
+            socket.on('add user', function(data) {
+                appendnotice(data.username + "已加入");
+            });
+
+            socket.on('user left', function(data) {
+                appendnotice(data.username + "已離開");
+            });
+
+            function appendnotice(msg) {
+                var newdiv = $('<div class="message"></div>').text(msg);
+                $('#messages').append(newdiv);
+
+                var his = document.getElementById("message_history");
+                his.scrollTop = his.scrollHeight;
+            }
+
+            function AppendMessage(data) {
+                if (data.u_name == name) {
+                    var newdiv = $('<div class="tooltip my_message"></div>')
+                        .prop("title", data.u_time)
+                        .text(data.u_word);
+                    var msg = data.u_name + ":";
+                    var whosays = $('<div class="my_says"></div>').text(msg);
+                } else {
+                    var newdiv = $('<div class="tooltip other_message"></div>')
+                        .prop("title", data.u_time)
+                        .text(data.u_word);
+                    var msg = data.u_name + ":";
+                    var whosays = $('<div class="other_says"></div>').text(msg);
+                }
+                $('#messages').append(whosays);
+                $('#messages').append(newdiv);
+                $('.tooltip').tooltipster();
+
+                var his = document.getElementById("message_history");
+                his.scrollTop = his.scrollHeight;
+            }
+
+            function AppendPriMessage(data) {
+                if (data.from == name) {
+                  var target = data.to;
+                  var div = $('<div class="pri_my_message"></div>')
+                    .prop("title", data.time)
+                    .text(data.msg);
+                  var msg = data.from + ":";
+                  var who = $('<div class="pri_my_says"></div>').text(msg);
+                } else {
+                  var target = data.from;
+                  var div = $('<div class="pri_other_message"><div>')
+                    .prop("title", data.time)
+                    .text(data.msg);
+                  var msg = data.from + ":";
+                  var who = $('<div class="pri_other_says"></div>').text(msg);
+                }
+                $('#'+target).append(div);
+                var con = document.getElementById("content"+target);
+                con.scrollTop = con.scrollHeight;
+            }
+
+            function login() {
+                name = prompt("請輸入帳號（或輸入guest以訪客登入）\n第一次登入的帳密會自動註冊", "guest");
+                if (name == "" || name == null || name == "guest") {
+                    name = "guest";
+                    socket.emit("guest login");
+                }
+                if (name != "guest") {
+                    var password = prompt("請輸入密碼", "");
+
+                    while (password === "" || password === null) {
+                        password = prompt("no password!!!", "");
+                    }
+
+                    socket.emit("user login", {
+                        username: name,
+                        userpassword: password //profile
+                    });
+                }
+            };
+
+            function updateuserlist(userlist) {
+                const list = document.getElementById('userlist');
+                list.innerHTML = '';
+
+                for (let i = 0; i < userlist.length; i += 1) {
+                    const item = document.createElement('li');
+                    if (userlist[i] === name) {
+                        item.innerHTML = userlist[i] + "(You)";
+                    } else {
+                        item.innerHTML = userlist[i];
+                    }
+                    item.addEventListener('mouseenter', function() {
+                        item.style.color = "red";
+                    });
+                    item.addEventListener('mouseleave', function() {
+                        item.style.color = "black";
+                    });
+                    item.addEventListener('click', function() {
+                        var flag = false;
+                        for(let j = 0; j<pri_chatlist.length; j+=1){
+                            if(userlist[i]==pri_chatlist[j]){
+                              flag = true;
+                            }
+                        }
+                        if(!flag){
+                          socket.emit('private chat', userlist[i]); //when click mouse, private chat
+                        }
+                    });
+                    list.appendChild(item);
+                }
+            };
+        });
+    </script>
+</body>
+
+</html>

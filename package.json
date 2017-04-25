@@ -1,0 +1,23 @@
+{
+  "name": "lab1",
+  "version": "0.0.0",
+  "description": "Tessel project",
+  "main": "server.js",
+  "dependencies": {
+    "assert": "^1.4.1",
+    "express": "^4.15.2",
+    "mongodb": "^2.2.24",
+    "mysql": "^2.13.0",
+    "socket.io": "^1.7.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "https://github.com/ESLab2017/lab1.git",
+  "keywords": [
+    "Tessel"
+  ],
+  "license": "MIT",
+  "readme": "A bare bones Tessel 2 blinky script."
+}
